@@ -1,0 +1,10 @@
+pluginManagement {
+    plugins {
+        id 'org.jetbrains.kotlin.jvm' version "${kotlinPluginVersion}"
+    }
+}
+
+rootProject.name = 'blokd-node'
+
+include ':blokd-core'
+project(':blokd-core').projectDir = file('../legally-blocked')

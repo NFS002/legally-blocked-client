@@ -1,0 +1,13 @@
+# IDE
+.idea
+
+# Build
+build
+
+
+# Gradle
+.gradle
+gradlew.bat
+
+# OS
+.DS_STORE
