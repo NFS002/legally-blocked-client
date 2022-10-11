@@ -5,6 +5,7 @@ import blokd.block.BlockChain
 import blokd.block.cache.Fcache
 import blokd.block.cache.PCache
 import blokd.extensions.*
+import blokd.node.KAFKA_CLIENT_ID
 import blokd.node.KAFKA_GROUP_ID
 import blokd.node.KAFKA_TOPIC
 import blokd.node.loadKafkaConfig
@@ -29,7 +30,11 @@ object BlockConsumer {
         properties[VALUE_DESERIALIZER_CLASS_CONFIG] = BlockDeserializer::class.java.name
         properties[JSON_VALUE_TYPE] = Block::class.java
         properties[GROUP_ID_CONFIG] = KAFKA_GROUP_ID
-        properties[AUTO_OFFSET_RESET_CONFIG] = "earliest"
+        //properties[CLIENT_ID_CONFIG] =  KAFKA_CLIENT_ID
+        properties[AUTO_OFFSET_RESET_CONFIG] = "largest"
+        properties[ENABLE_AUTO_COMMIT_CONFIG] = false
+        properties[AUTO_OFFSET_RESET_CONFIG] = "latest"
+
         return properties
     }
 
@@ -52,16 +57,26 @@ object BlockConsumer {
             subscribe(listOf(KAFKA_TOPIC))
         }
 
+        val keyPair = PRIMARY_KEYPAIR
         blockConsumer.poll(ofMillis(10000)).forEach { record ->
             val key = record.key()
             val block = record.value()
-            println("Consumed record with key $key and value $block")
-            val signedBlock = block.copy()
-            val keyPair = PRIMARY_KEYPAIR
 
-            (!(block.isSignedBy(keyPair.public))).then {
-                signedBlock.sign(keyPair.private, id = keyPair.public.id())
+            LOGGER.info("Consumed record with key $key and value $block")
+
+            val isSigned = block.isSignedBy(keyPair.public)
+            val signedBlock = block.copy()
+
+            isSigned.then {
+                LOGGER.info("Block is already signed")
+            }
+
+
+            (!isSigned).then {
+                //TODO("Uncomment line below")
+                //signedBlock.sign(keyPair.private, keyId = keyPair.public.id())
                 thread {
+                    LOGGER.info("Publishing signed block")
                     BlockProducer.publish(signedBlock)
                 }
             }
@@ -81,7 +96,6 @@ object BlockConsumer {
                         LOGGER.error(
                             "Unable to add block $signedBlock that was previously marked as valid and at the expected height. " +
                                     "Your blockchain may be out of sync, attempting recovery", it
-
                         )
                         throw it
                     }
@@ -91,7 +105,7 @@ object BlockConsumer {
                 }
             }.ifFalse {
                 LOGGER.info(
-                    "Given block $signedBlock is invalid or missing signatures. " +
+                    "Block $signedBlock is invalid or missing signatures. " +
                     "Block has been signed and is queued to be returned to sender."
                 )
             }
