@@ -14,15 +14,12 @@ fun main() {
     val keyPair2 = newKeypair()
     val contract = Contract(text, owner = keyPair1.public, intendedRecipient = keyPair2.public)
     contract.sign(keyPair1.private)
-    val block = Block()
-    block.addBlockData(contract)
+    val block = Block(blockData = listOf(contract))
     block.sign(keyPair1.private, id = keyPair1.public.id())
     val mapper = jacksonObjectMapper()
     configureObjectMapper(mapper)
     val jsonString = mapper.writeValueAsString(block)
     println(jsonString)
     val newBlock = mapper.readValue(jsonString, Block::class.java)
-    println(newBlock.blockData)
-
-
+    println(newBlock)
 }
