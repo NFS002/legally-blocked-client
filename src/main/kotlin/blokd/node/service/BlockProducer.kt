@@ -47,7 +47,6 @@ object BlockProducer {
         this.handleTopicCreationResult(res)
 
         KafkaProducer<String, Block>(props).use { producer ->
-            println("Publishing with key $kafkaClientId")
             producer.send(ProducerRecord(KAFKA_TOPIC, kafkaClientId, block)) { m: RecordMetadata, e: Exception? ->
                 this.handleBlockPublishResult(block, m, e)
             }

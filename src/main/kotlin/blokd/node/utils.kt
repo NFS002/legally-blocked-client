@@ -13,7 +13,7 @@ val KAFKA_GROUP_ID = PRIMARY_KEYPAIR.public.id()
 
 val KAFKA_CLIENT_ID = UUID.randomUUID().toString()
 
-const val KAFKA_TOPIC: String = "blocks_v9"
+const val KAFKA_TOPIC: String = "blocks_v11"
 
 private val KAFKA_CONFIG_PATH = BASE_PROPERTIES.getProperty(CONFIGKEY__KAFKA_CONFIG_PATH)
 

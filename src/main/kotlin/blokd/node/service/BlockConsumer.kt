@@ -88,7 +88,7 @@ object BlockConsumer {
                     res.onSuccess {
                         val nextHeight = BlockChain.nextHeight
                         LOGGER.info(
-                            "Block $signedBlock was successfully added. Chain is now at" +
+                            "$signedBlock was successfully added. Chain is now at" +
                                     "$nextHeight"
                         )
                         buildFromCache(nextHeight)
@@ -105,7 +105,7 @@ object BlockConsumer {
                 }
             }.ifFalse {
                 LOGGER.info(
-                    "Block $signedBlock is invalid or missing signatures. " +
+                    "$signedBlock is invalid or missing signatures. " +
                     "Block has been signed and is queued to be returned to sender."
                 )
             }
