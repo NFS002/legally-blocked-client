@@ -1,12 +1,10 @@
 package blokd.node.serializer
 
 import blokd.block.Block
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.util.JSONPObject
+import blokd.block.JsonBlock
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
-import org.json.JSONObject
 
 class BlockSerializer : Serializer<Block> {
 
@@ -36,8 +34,12 @@ class BlockDeserializer : Deserializer<Block> {
     override fun deserialize(topic: String?, data: ByteArray?): Block? {
         val jsonObject = mapper.readValue(data, JsonBlock::class.java)
         val block = mapper.readValue(data, Block::class.java)
-        println("DESERIALIZED BLOCK AS JSONBlock: $jsonObject")
-        println("DESERIALIZED BLOCK: $block")
-        return block
+        val newBlock = Block(previousHash = jsonObject.previousHash, expectedHeight = jsonObject.expectedHeight)
+        jsonObject.blockData.forEach{ b -> newBlock.addBlockData(b) }
+        newBlock.signatures = jsonObject.signatures
+        newBlock.nonce = jsonObject.nonce
+        newBlock.header = jsonObject.header
+        println("DESERIALIZED BLOCK: $newBlock")
+        return newBlock
     }
 }

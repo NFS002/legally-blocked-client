@@ -1,5 +1,3 @@
-@file:JvmName("Example1")
-
 package blokd.node.app
 
 import blokd.actions.Contract
@@ -7,14 +5,10 @@ import blokd.block.Block
 import blokd.extensions.PRIMARY_KEYPAIR
 import blokd.extensions.id
 import blokd.extensions.newKeypair
-import blokd.node.service.BlockProducer
-import org.apache.log4j.PropertyConfigurator
-
-const val KAFKA_CLIENT_ID_1 = "EXAMPLE-1"
+import blokd.node.serializer.configureObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 fun main() {
-    PropertyConfigurator.configure("/Users/noah/projects/legally-blocked/src/main/resources/log4j.properties")
-
     val text = "This is a contract (v2) for Kefei! Will she sign it?"
     val keyPair1 = PRIMARY_KEYPAIR
     val keyPair2 = newKeypair()
@@ -23,5 +17,12 @@ fun main() {
     val block = Block()
     block.addBlockData(contract)
     block.sign(keyPair1.private, id = keyPair1.public.id())
-    BlockProducer.publish(block, kafkaClientId=KAFKA_CLIENT_ID_1)
+    val mapper = jacksonObjectMapper()
+    configureObjectMapper(mapper)
+    val jsonString = mapper.writeValueAsString(block)
+    println(jsonString)
+    val newBlock = mapper.readValue(jsonString, Block::class.java)
+    println(newBlock.blockData)
+
+
 }

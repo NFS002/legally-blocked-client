@@ -1,14 +1,11 @@
 package blokd.node.service
 
 import blokd.block.Block
-import blokd.extensions.ifFalse
-import blokd.extensions.shorten
-import blokd.extensions.then
-import blokd.node.KAFKA_GROUP_ID
 import blokd.node.KAFKA_TOPIC
 import blokd.node.loadKafkaConfig
 import blokd.node.serializer.BlockSerializer
 import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.CreateTopicsResult
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig.*
@@ -25,15 +22,12 @@ object BlockProducer {
     private val LOGGER = Logger.getLogger(this::class.java)
 
     // Create topic in Confluent Cloud
-    private fun createTopic(properties: Properties): Result<Boolean> {
-        with(AdminClient.create(properties)) {
-            return runCatching {
-                val topics = listTopics()
-                (topics.names().get().contains(KAFKA_TOPIC)).ifFalse {
-                    LOGGER.debug("Attempting creation of topic '$KAFKA_TOPIC'")
-                    val newTopic = NewTopic(KAFKA_TOPIC, 1, 3)
-                    createTopics(listOf(newTopic))
-                }
+    private fun createTopic(properties: Properties): Result<CreateTopicsResult> {
+        return runCatching {
+            with(AdminClient.create(properties)) {
+                LOGGER.debug("Attempting creation of topic '$KAFKA_TOPIC'")
+                val newTopic = NewTopic(KAFKA_TOPIC, 1, 3)
+                createTopics(listOf(newTopic))
             }
         }
     }
@@ -47,20 +41,20 @@ object BlockProducer {
         return props
     }
 
-    fun publish(block: Block) {
+    fun publish(block: Block, kafkaClientId:String) {
         val props = loadProducerConfig()
         val res = createTopic(props)
         this.handleTopicCreationResult(res)
 
         KafkaProducer<String, Block>(props).use { producer ->
-            val key = "${KAFKA_GROUP_ID.shorten()}:${block.header.shorten()}"
-            producer.send(ProducerRecord(KAFKA_TOPIC, key, block)) { m: RecordMetadata, e: Exception? ->
+            println("Publishing with key $kafkaClientId")
+            producer.send(ProducerRecord(KAFKA_TOPIC, kafkaClientId, block)) { m: RecordMetadata, e: Exception? ->
                 this.handleBlockPublishResult(block, m, e)
             }
         }
     }
 
-    private fun handleTopicCreationResult(topicCreationResult: Result<Boolean>) {
+    private fun handleTopicCreationResult(topicCreationResult: Result<CreateTopicsResult>) {
         topicCreationResult.onSuccess {
             "Topic creation for '${KAFKA_TOPIC}' succeeded"
         }.onFailure { exc ->

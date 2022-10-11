@@ -24,16 +24,16 @@ object BlockConsumer {
     private val LOGGER = Logger.getLogger(this::class.java)
 
 
-    private fun loadConsumerConfig(): Properties {
+    private fun loadConsumerConfig(kafkaClientId: String): Properties {
         val properties = loadKafkaConfig()
         properties[KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
         properties[VALUE_DESERIALIZER_CLASS_CONFIG] = BlockDeserializer::class.java.name
         properties[JSON_VALUE_TYPE] = Block::class.java
         properties[GROUP_ID_CONFIG] = KAFKA_GROUP_ID
-        //properties[CLIENT_ID_CONFIG] =  KAFKA_CLIENT_ID
-        properties[AUTO_OFFSET_RESET_CONFIG] = "largest"
-        properties[ENABLE_AUTO_COMMIT_CONFIG] = false
-        properties[AUTO_OFFSET_RESET_CONFIG] = "latest"
+        properties[CLIENT_ID_CONFIG] =  kafkaClientId
+        //properties[AUTO_OFFSET_RESET_CONFIG] = "largest"
+        //properties[ENABLE_AUTO_COMMIT_CONFIG] = false
+        properties[AUTO_OFFSET_RESET_CONFIG] = "earliest"
 
         return properties
     }
@@ -49,9 +49,9 @@ object BlockConsumer {
         }
     }
 
-    fun consume() {
+    fun consume(kafkaClientId:String) {
         // Load properties from disk.
-        val properties = loadConsumerConfig()
+        val properties = loadConsumerConfig(kafkaClientId)
 
         val blockConsumer = KafkaConsumer<String, Block>(properties).apply {
             subscribe(listOf(KAFKA_TOPIC))
@@ -68,16 +68,16 @@ object BlockConsumer {
             val signedBlock = block.copy()
 
             isSigned.then {
-                LOGGER.info("Block is already signed")
+                LOGGER.info("Block is already signed, ${block.signatures}")
             }
 
 
-            (!isSigned).then {
+            (isSigned).then {
                 //TODO("Uncomment line below")
                 //signedBlock.sign(keyPair.private, keyId = keyPair.public.id())
                 thread {
                     LOGGER.info("Publishing signed block")
-                    BlockProducer.publish(signedBlock)
+                    BlockProducer.publish(signedBlock, kafkaClientId)
                 }
             }
             (signedBlock.validate()).ifTrue {
